@@ -63,8 +63,6 @@ void MPU9255Setup()
 
   // Enable continuous measurement (magnetometer)
   writeToRegisterMag(CNTL1, 0x12);
-
-  
 }
 
 int readAccelX()
