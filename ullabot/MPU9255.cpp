@@ -53,10 +53,10 @@ void MPU9255Setup()
   writeToRegister(USER_CTRL, 0);
 
   // Gyroscope Configuration Register
-  writeToRegister(GYRO_CONFIG, 0x18);
+  writeToRegister(GYRO_CONFIG, 0x18); // +-2000 dps
 
   // Accelerometer Configuration Register
-  writeToRegister(ACCEL_CONFIG, 0x18);
+  writeToRegister(ACCEL_CONFIG, 0x18); // +-16g
 
   // Enable bypass
   writeToRegister(INT_PIN_CFG, 0x02);
