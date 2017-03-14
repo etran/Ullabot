@@ -9,6 +9,8 @@
 #define RIGHT_MOTOR_DIRECTION 24
 #define LEFT_MOTOR_PWM 7
 #define RIGHT_MOTOR_PWM 6
+#define LEFT_MOTOR_FLIP 1
+#define RIGHT_MOTOR_FLIP 1
 
 // IR Sensor Constants
 #define IR_SIGNAL A5
@@ -56,26 +58,44 @@ void loop()
   float heightOffGround = bmp.pressureToAltitude(SENSORS_PRESSURE_SEALEVELHPA, event.pressure) - altitudeOffset;
 
   // Get Accel Data
-  int accelX = readAccelX();
-  int accelY = readAccelY();
-  int accelZ = readAccelZ();
+  double accelX = readAccelX();
+  double accelY = readAccelY();
+  double accelZ = readAccelZ();
 
   // Get Gyro Data
-  int gyroX = readGyroX();
-  int gyroY = readGyroY();
-  int gyroZ = readGyroZ();
+  double gyroX = readGyroX();
+  double gyroY = readGyroY();
+  double gyroZ = readGyroZ();
 
   // Get Mag Data
-  int magX = readMagX();
-  int mayY = readMagY();
-  int magZ = readMagZ();
+  double magX = readMagX();
+  double mayY = readMagY();
+  double magZ = readMagZ();
+
+
+
+  //Code to zero out gravity
+  accelX = accelX - 79;
+  accelY = accelY - 14.5;
+  accelZ = accelZ - 8.55;
+
+
+  Serial.println(accelX);
+  Serial.println(accelY);
+  Serial.println(accelZ);
+  double accelMag =  sqrt((accelX*accelX)+(accelY*accelY)+(accelZ*accelZ));
+  Serial.println(accelMag);
+  
+  delay(1000);
+
+  driveRobot(127);
 }
 
 void driveRobot(int speed)
 {
   bool dir = speed > 0 ? LOW : HIGH;
-  digitalWrite(LEFT_MOTOR_DIRECTION, dir);
-  digitalWrite(RIGHT_MOTOR_DIRECTION, dir);
+  digitalWrite(LEFT_MOTOR_DIRECTION, dir ^ LEFT_MOTOR_FLIP);
+  digitalWrite(RIGHT_MOTOR_DIRECTION, dir ^ RIGHT_MOTOR_FLIP);
   analogWrite(LEFT_MOTOR_PWM, abs(speed));
   analogWrite(RIGHT_MOTOR_PWM, abs(speed));
 }
@@ -84,8 +104,8 @@ void driveRobot(int leftSpeed, int rightSpeed)
 {
   bool leftDir = leftSpeed > 0 ? LOW : HIGH;
   bool rightDir = rightSpeed > 0 ? LOW : HIGH;
-  digitalWrite(LEFT_MOTOR_DIRECTION, leftDir);
-  digitalWrite(RIGHT_MOTOR_DIRECTION, rightDir);
+  digitalWrite(LEFT_MOTOR_DIRECTION, (leftDir) ^ LEFT_MOTOR_FLIP);
+  digitalWrite(RIGHT_MOTOR_DIRECTION, (rightDir) ^ RIGHT_MOTOR_FLIP);
   analogWrite(LEFT_MOTOR_PWM, abs(leftSpeed));
   analogWrite(RIGHT_MOTOR_PWM, abs(rightSpeed));
 }
@@ -93,8 +113,8 @@ void driveRobot(int leftSpeed, int rightSpeed)
 void rotateRobotOnSpot(int speed)
 {
   bool dir = speed > 0 ? LOW : HIGH;
-  digitalWrite(LEFT_MOTOR_DIRECTION, !dir);
-  digitalWrite(RIGHT_MOTOR_DIRECTION, dir);
+  digitalWrite(LEFT_MOTOR_DIRECTION, (!dir) ^ LEFT_MOTOR_FLIP);
+  digitalWrite(RIGHT_MOTOR_DIRECTION, (dir) ^ RIGHT_MOTOR_FLIP);
   analogWrite(LEFT_MOTOR_PWM, abs(speed));
   analogWrite(RIGHT_MOTOR_PWM, abs(speed));
 }
