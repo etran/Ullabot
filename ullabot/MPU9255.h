@@ -2,7 +2,6 @@
 
 #include "Arduino.h"
 #include <Wire.h>
-#include "Adafruit_BMP085_U.h"
 
 #define MPU9255_ADDRESS 0x68
 #define MAGNETOMETER_ADDRESS 0x0C
