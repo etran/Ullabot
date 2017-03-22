@@ -1,24 +1,8 @@
 #include "Adafruit_BMP085_U.h"
 #include "Adafruit_BNO055.h"
+#include "OrientationControl.h"
+#include "global_vars.h"
 #include <Servo.h>
-
-// Servo Motor Constants
-#define SERVO_SIGNAL 26
-
-// Motor Controller Constants
-#define LEFT_MOTOR_DIRECTION 22
-#define RIGHT_MOTOR_DIRECTION 24
-#define LEFT_MOTOR_PWM 7
-#define RIGHT_MOTOR_PWM 6
-#define LEFT_MOTOR_FLIP 1
-#define RIGHT_MOTOR_FLIP 1
-
-// IR Sensor Constants
-#define IR_SIGNAL A5
-
-// Push Button Constants
-#define PUSH_BUTTON_START 8
-#define PUSH_BUTTON_EXTRA 9
 
 // Function Prototypes
 void driveRobot(int speed); // + = forward, - = backward, 0-255 speed
@@ -26,21 +10,20 @@ void driveRobot(int leftSpeed, int rightSpeed); // + = forward, - = backward, 0-
 void rotateRobotOnSpot(int speed); // + = CCW, - = CW, 0-255 speed
 
 // IMU Declarations
-Adafruit_BNO055 IMU = Adafruit_BNO055(55);
-sensors_event_t imuEvent;
+Orientation orientation = Orientation();
+sensors_event_t cur_orientation;
 
-// Barometric Pressure Sensor Declarations
-Adafruit_BMP085_Unified bmp = Adafruit_BMP085_Unified(10085);
-sensors_event_t barometerEvent;
-float altitudeOffset = 0;
-
+double integrationCounter = 0;
+double speedMultiplier = 0.60;
 // Servo Declaration
 Servo sensorServo;
+int angle = 90;
 
-void setup() 
+void setup()
 {
   Serial.begin(115200);
-  
+  Serial.println("Fuck");
+  delay(250);
   // Motor Controller Setup
   pinMode(LEFT_MOTOR_DIRECTION, OUTPUT);
   pinMode(RIGHT_MOTOR_DIRECTION, OUTPUT);
@@ -49,55 +32,59 @@ void setup()
 
   // Servo Setup
   sensorServo.attach(SERVO_SIGNAL);
-
-  // IMU Setup 
-  IMU.begin();
-  delay(1000);
-  IMU.setExtCrystalUse(true);
-
-  // Barometric Pressure Sensor Setup
-  bmp.begin(BMP085_MODE_STANDARD);
-  bmp.getEvent(&barometerEvent);
+  sensorServo.write(90);
 
   // IR Sensor Setup
   pinMode(IR_SIGNAL, INPUT);
-
+  Serial.println("Hiya");
   // Push Button Setup
   pinMode(PUSH_BUTTON_START, INPUT);
   pinMode(PUSH_BUTTON_EXTRA, INPUT);
-}
 
-void loop() 
+  //IMU Setup
+  orientation.setupOrientation();
+  
+  // LED Setup
+  pinMode(LED_IMU_STATE, OUTPUT);
+}
+void loop()
 {
+  // Once every calibration value is 3, we're good to go
+  orientation.displayCalStatus();
+  Serial.println("Hi");
+  
+  bool multiplier_latch = false;
   // Read Button
+
+
+  delay(100);
+  readIRSensor();
   bool startButtonState = digitalRead(PUSH_BUTTON_START);
+  
   if (startButtonState == HIGH)
   {
+    delay(500);
+    
+  orientation.setInitOrientation();
+    
     while (true)
     {
       // Retrieve IMU Data
-      IMU.getEvent(&imuEvent);
-      Serial.print("X: ");
-      Serial.print(imuEvent.orientation.x, 4);
-      Serial.print("\tY: ");
-      Serial.print(imuEvent.orientation.y, 4);
-      Serial.print("\tZ: ");
-      Serial.print(imuEvent.orientation.z, 4);
-      Serial.println("");
-    
-      // Once every calibration value is 3, we're good to go
-      displayCalStatus();
-      
-      // Retrieve Pressure Data
-      bmp.getEvent(&barometerEvent);
-      float heightFromSea = bmp.pressureToAltitude(SENSORS_PRESSURE_SEALEVELHPA, barometerEvent.pressure);
-      Serial.print("Height: ");
-      Serial.print(heightFromSea);
-      Serial.println("");
-    
+      orientation.printCurrentOrientation();
+      setMotorSpeed();
+      bool extraButtonState = digitalRead(PUSH_BUTTON_EXTRA);
+      if (extraButtonState == HIGH && multiplier_latch == false)
+      {
+        //orientation.setInitOrientation();
+        speedMultiplier = fmod((speedMultiplier + 0.2), 1.20)+0.6;
+        multiplier_latch = true;
+        integrationCounter = 0;
+      }
+      if (extraButtonState == LOW)
+      {
+        multiplier_latch = false;
+      }
       delay(500);
-    
-      driveRobot(255*0.1);
     }
   }
   bool buttonState = digitalRead(PUSH_BUTTON_EXTRA);
@@ -134,31 +121,50 @@ void rotateRobotOnSpot(int speed)
   analogWrite(LEFT_MOTOR_PWM, abs(speed));
   analogWrite(RIGHT_MOTOR_PWM, abs(speed));
 }
-
-void displayCalStatus(void)
+int readIRSensor()
 {
-  /* Get the four calibration values (0..3) */
-  /* Any sensor data reporting 0 should be ignored, */
-  /* 3 means 'fully calibrated" */
-  uint8_t system, gyro, accel, mag;
-  system = gyro = accel = mag = 0;
-  IMU.getCalibration(&system, &gyro, &accel, &mag);
- 
-  /* The data should be ignored until the system calibration is > 0 */
-  Serial.print("\t");
-  if (!system)
-  {
-    Serial.print("! ");
-  }
- 
-  /* Display the individual values */
-  Serial.print("Sys:");
-  Serial.print(system, DEC);
-  Serial.print(" G:");
-  Serial.print(gyro, DEC);
-  Serial.print(" A:");
-  Serial.print(accel, DEC);
-  Serial.print(" M:");
-  Serial.println(mag, DEC);
+  double sensorVoltage = analogRead(IR_SIGNAL)/1024.00 * 5.00;
+  double distance = 18.87*sensorVoltage*sensorVoltage - 96.319*sensorVoltage + 143.68; //cm
+  Serial.print("IR Sensor Voltage: ");
+  Serial.print(sensorVoltage);
+  Serial.print("IR Sensor Distance: ");
+  Serial.print(distance);
+  Serial.println();
+}
+void setMotorSpeed()
+{
+    // correction multiplier
+    double angleDelta = (orientation.getInitOrientation().orientation.x - orientation.getCurrentOrientation().orientation.x);
+    // if angleDelta smaller than zero, we are too far right
+    // if angleDelta largetr than zero, we are too far left
+    if ( angleDelta > 270 )
+      angleDelta = angleDelta - 360;
+    else if ( angleDelta < -270 )
+      angleDelta = angleDelta + 360;
+    double positionMultiplier =  1 - 1 * abs(angleDelta) / 360;
+    integrationCounter = integrationCounter + 0.25*angleDelta;
+    if(integrationCounter > 270)
+    {
+      integrationCounter = 270;
+    }
+    else if(integrationCounter < -270)
+    {
+      integrationCounter = -270;
+    }
+    double integrationMultiplier = 1 - 0.1*abs(integrationCounter) / 360;
+    Serial.print("angleDelta: ");
+    Serial.print(angleDelta);
+    Serial.println("");
+
+    if (angleDelta > 0)
+    {
+      driveRobot(255 * speedMultiplier, 255 * speedMultiplier * positionMultiplier);
+      //driveRobot(255 * speedMultiplier, 255 * speedMultiplier);
+    }
+    if (angleDelta < 0)
+    {
+      driveRobot(255 * speedMultiplier * positionMultiplier, 255 * speedMultiplier);
+      //driveRobot(255 * speedMultiplier, 255 * speedMultiplier);
+    }
 }
 
