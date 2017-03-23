@@ -82,31 +82,34 @@ void loop()
     
       while (true)
       {
+		Serial.print("State: ");
+		Serial.print(state);
+		Serial.println("");
         // Retrieve IMU Data
         orientation.printCurrentOrientation();
         switch(state){
         case Wall_approach_1:
           orientation.setXOrientationOffset(-30);
-          if(orientation.getXOrientationDelta() == 0)
+          if(orientation.getXOrientationDelta() < 5)
 		  {
 			  state = Wall_approach_2;
 		  }
           break;
         case Wall_approach_2:
           orientation.setXOrientationOffset(0);
-		  if(orientation.getZOrientationDelta() < -70)
+		  if(orientation.getZOrientationDelta() > 70)
 		  {
 			  state = Wall_up;
 		  }
           break;
         case Wall_up:
-          if(orientation.getZOrientationDelta() > 60)
+          if(orientation.getZOrientationDelta() < -60)
 		  {
 			  state = Wall_down;
 		  }
           break;
         case Wall_down:
-		  if(orientation.getZOrientationDelta() < 0)
+		  if(orientation.getZOrientationDelta() > 0)
 		  {
 			  state = Pole_finding;
 		  }
