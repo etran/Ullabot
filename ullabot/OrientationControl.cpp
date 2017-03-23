@@ -75,7 +75,7 @@ void Orientation::displayCalStatus(void)
   Serial.println(mag, DEC);
 }
 
-void Orientation::setXOrientationOffset(int offset)
+void Orientation::setXOrientationOffset(double offset)
 {
 	if(offset > 180)
 	{
@@ -87,7 +87,7 @@ void Orientation::setXOrientationOffset(int offset)
 	}
 	x_orientation_offset = offset;
 }
-void Orientation::setYOrientationOffset(int offset)
+void Orientation::setYOrientationOffset(double offset)
 {
 	if(offset > 180)
 	{
@@ -99,7 +99,7 @@ void Orientation::setYOrientationOffset(int offset)
 	}
 	y_orientation_offset = offset;
 }
-void Orientation::setZOrientationOffset(int offset)
+void Orientation::setZOrientationOffset(double offset)
 {
 	if(offset > 180)
 	{
@@ -111,7 +111,7 @@ void Orientation::setZOrientationOffset(int offset)
 	}
 	z_orientation_offset = offset;
 }
-void Orientation::addXOrientationOffset(int change)
+void Orientation::addXOrientationOffset(double change)
 {
 	x_orientation_offset = x_orientation_offset + change;
 	if(x_orientation_offset > 180)
@@ -123,7 +123,7 @@ void Orientation::addXOrientationOffset(int change)
 		x_orientation_offset = x_orientation_offset + 360;
 	}
 }
-void Orientation::addYOrientationOffset(int change)
+void Orientation::addYOrientationOffset(double change)
 {
 	y_orientation_offset = y_orientation_offset + change;
 	if(y_orientation_offset > 180)
@@ -135,8 +135,9 @@ void Orientation::addYOrientationOffset(int change)
 		y_orientation_offset = y_orientation_offset + 360;
 	}
 }
-void Orientation::addZOrientationOffset(int change)
+void Orientation::addZOrientationOffset(double change)
 {
+	
 	z_orientation_offset = z_orientation_offset + change;
 	if(z_orientation_offset > 180)
 	{
@@ -146,4 +147,16 @@ void Orientation::addZOrientationOffset(int change)
 	{
 		z_orientation_offset = z_orientation_offset + 360;
 	}
+}
+double Orientation::getXOrientationDelta()
+{
+	return getInitOrientation().orientation.x - (getCurrentOrientation().orientation.x - x_orientation_offset);
+}
+double Orientation::getYOrientationDelta()
+{
+	return getInitOrientation().orientation.y - (getCurrentOrientation().orientation.y - y_orientation_offset);
+}
+double Orientation::getZOrientationDelta()
+{
+	return getInitOrientation().orientation.z - (getCurrentOrientation().orientation.z - z_orientation_offset);
 }

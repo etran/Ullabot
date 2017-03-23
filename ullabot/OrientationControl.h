@@ -14,7 +14,7 @@ class Orientation{
 		double z_orientation_offset;
 		
 		Orientation();
-    void setupOrientation();
+		void setupOrientation();
 		void setInitOrientation();
 		sensors_event_t getInitOrientation();
 		sensors_event_t getCurrentOrientation();
@@ -22,14 +22,17 @@ class Orientation{
 		void printCurrentOrientation();
 		void displayCalStatus(void);
 		
-		void setXOrientationOffset(int);
-		void setYOrientationOffset(int);
-		void setZOrientationOffset(int);
+		void setXOrientationOffset(double);
+		void setYOrientationOffset(double);
+		void setZOrientationOffset(double);
 		
-		void addXOrientationOffset(int);
-		void addYOrientationOffset(int);
-		void addZOrientationOffset(int);
-    
+		void addXOrientationOffset(double);
+		void addYOrientationOffset(double);
+		void addZOrientationOffset(double);
+		
+		double getXOrientationDelta();
+		double getYOrientationDelta();
+		double getZOrientationDelta();
 	private:
 		Adafruit_BNO055 IMU;
 		sensors_event_t imuEvent;

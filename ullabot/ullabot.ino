@@ -7,18 +7,30 @@
 // Function Prototypes
 void driveRobot(int speed); // + = forward, - = backward, 0-255 speed
 void driveRobot(int leftSpeed, int rightSpeed); // + = forward, - = backward, 0-255 speed
-void rotateRobotOnSpot(int speed); // + = CCW, - = CW, 0-255 speed
+void rotateRobotOnSpot(int speed); // - = CCW, + = CW, 0-255 speed
 
 // IMU Declarations
 Orientation orientation = Orientation();
 sensors_event_t cur_orientation;
 
 double integrationCounter = 0;
-double speedMultiplier = 0.60;
+double speedMultiplier = 0.80;
 // Servo Declaration
 Servo sensorServo;
-int angle = 90;
+int absolute_angle=0;
 
+
+enum States
+{
+    Wall_approach_1,
+    Wall_approach_2,
+    Wall_up,
+    Wall_down,
+    Pole_finding,
+    Pole_approach,
+	Facing_left
+};
+States state = Wall_approach_1;
 void setup()
 {
   Serial.begin(115200);
@@ -37,6 +49,7 @@ void setup()
   // IR Sensor Setup
   pinMode(IR_SIGNAL, INPUT);
   Serial.println("Hiya");
+  
   // Push Button Setup
   pinMode(PUSH_BUTTON_START, INPUT);
   pinMode(PUSH_BUTTON_EXTRA, INPUT);
@@ -51,7 +64,7 @@ void loop()
 {
   // Once every calibration value is 3, we're good to go
   orientation.displayCalStatus();
-  Serial.println("Hi");
+  //Serial.println("Hi");
   
   bool multiplier_latch = false;
   // Read Button
@@ -65,18 +78,91 @@ void loop()
   {
     delay(500);
     
-  orientation.setInitOrientation();
+    orientation.setInitOrientation();
     
-    while (true)
-    {
-      // Retrieve IMU Data
-      orientation.printCurrentOrientation();
-      setMotorSpeed();
+      while (true)
+      {
+        // Retrieve IMU Data
+        orientation.printCurrentOrientation();
+        switch(state){
+        case Wall_approach_1:
+          orientation.setXOrientationOffset(-30);
+          if(orientation.getXOrientationDelta() == 0)
+		  {
+			  state = Wall_approach_2;
+		  }
+          break;
+        case Wall_approach_2:
+          orientation.setXOrientationOffset(0);
+		  if(orientation.getZOrientationDelta() < -70)
+		  {
+			  state = Wall_up;
+		  }
+          break;
+        case Wall_up:
+          if(orientation.getZOrientationDelta() > 60)
+		  {
+			  state = Wall_down;
+		  }
+          break;
+        case Wall_down:
+		  if(orientation.getZOrientationDelta() < 0)
+		  {
+			  state = Pole_finding;
+		  }
+          break;
+        case Pole_finding:
+		  speedMultiplier=0;
+		  orientation.setXOrientationOffset(0);
+		  if(orientation.getXOrientationDelta() < 0)
+		  {
+			  state = Facing_left;
+		  }
+		  else 
+		  {
+			  speedMultiplier = 0.1;
+		  }
+			  
+		  //If facing left, abort!!!! Turn on spot.
+		  //If facing right, probably do a shallow turn towards front
+		  //If facing front, go front with sensor facing right.
+		  //
+		  
+          break;
+        case Pole_approach:
+          break;
+		case Facing_left:
+		  orientation.setXOrientationOffset(0);
+		  if(orientation.getXOrientationDelta() < -10)
+		  {			  
+			rotateRobotOnSpot(255 * speedMultiplier);
+		  }
+		  else if(orientation.getXOrientationDelta() > 10)
+		  {
+			  rotateRobotOnSpot(-255 * speedMultiplier);
+		  }
+		  else
+		  {
+			  state = Pole_finding;
+		  }
+		  break;
+      }
+	  if(state != Facing_left) 
+	  {
+		setMotorSpeed();
+	  }		  
       bool extraButtonState = digitalRead(PUSH_BUTTON_EXTRA);
       if (extraButtonState == HIGH && multiplier_latch == false)
       {
-        //orientation.setInitOrientation();
-        speedMultiplier = fmod((speedMultiplier + 0.2), 1.20)+0.6;
+        orientation.setInitOrientation();
+        speedMultiplier = fmod((speedMultiplier + 0.2), 1.20);
+		if(speedMultiplier == 0)
+		{
+			speedMultiplier = speedMultiplier +0.6;
+		}
+		
+		Serial.print("Speed: ");
+		Serial.print(speedMultiplier);
         multiplier_latch = true;
         integrationCounter = 0;
       }
@@ -116,8 +202,8 @@ void driveRobot(int leftSpeed, int rightSpeed)
 void rotateRobotOnSpot(int speed)
 {
   bool dir = speed > 0 ? LOW : HIGH;
-  digitalWrite(LEFT_MOTOR_DIRECTION, (!dir) ^ LEFT_MOTOR_FLIP);
-  digitalWrite(RIGHT_MOTOR_DIRECTION, (dir) ^ RIGHT_MOTOR_FLIP);
+  digitalWrite(LEFT_MOTOR_DIRECTION, (dir) ^ LEFT_MOTOR_FLIP);
+  digitalWrite(RIGHT_MOTOR_DIRECTION, (!dir) ^ RIGHT_MOTOR_FLIP);
   analogWrite(LEFT_MOTOR_PWM, abs(speed));
   analogWrite(RIGHT_MOTOR_PWM, abs(speed));
 }
@@ -142,7 +228,7 @@ void setMotorSpeed()
     else if ( angleDelta < -270 )
       angleDelta = angleDelta + 360;
     double positionMultiplier =  1 - 1 * abs(angleDelta) / 360;
-    integrationCounter = integrationCounter + 0.25*angleDelta;
+    integrationCounter = integrationCounter + 0.5*angleDelta;
     if(integrationCounter > 270)
     {
       integrationCounter = 270;
@@ -158,12 +244,12 @@ void setMotorSpeed()
 
     if (angleDelta > 0)
     {
-      driveRobot(255 * speedMultiplier, 255 * speedMultiplier * positionMultiplier);
+      driveRobot(255 * speedMultiplier, 255 * speedMultiplier * positionMultiplier * integrationMultiplier);
       //driveRobot(255 * speedMultiplier, 255 * speedMultiplier);
     }
     if (angleDelta < 0)
     {
-      driveRobot(255 * speedMultiplier * positionMultiplier, 255 * speedMultiplier);
+      driveRobot(255 * speedMultiplier * positionMultiplier * integrationMultiplier, 255 * speedMultiplier);
       //driveRobot(255 * speedMultiplier, 255 * speedMultiplier);
     }
 }
