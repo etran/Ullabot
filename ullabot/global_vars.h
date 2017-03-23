@@ -1,5 +1,11 @@
+
+
 #ifndef globals_h
 #define globals_h
+
+#include <Arduino.h>
+#include <Servo.h>
+
 
 // Servo Motor Constants
 #define SERVO_SIGNAL 26
@@ -18,8 +24,10 @@
 // Push Button Constants
 #define PUSH_BUTTON_START 8
 #define PUSH_BUTTON_EXTRA 9
-
+#define PUSH_BUTTON_SOFT_RESET 11
 // LED PINS
 #define LED_IMU_STATE 12
+
+
 
 #endif

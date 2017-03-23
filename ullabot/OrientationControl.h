@@ -1,5 +1,6 @@
 #ifndef Orientation_h
 #define Orientation_h
+
 #include "Adafruit_BNO055.h"
 #include "Adafruit_Sensor.h"
 #include "Arduino.h"
@@ -33,11 +34,11 @@ class Orientation{
 		double getXOrientationDelta();
 		double getYOrientationDelta();
 		double getZOrientationDelta();
+		void printOrientationDelta();
 	private:
 		Adafruit_BNO055 IMU;
 		sensors_event_t imuEvent;
 		sensors_event_t initOrientation;
-		
+		      
 };
-
 #endif

@@ -184,7 +184,7 @@ void Orientation::displayCalStatus(void)
   {
     Serial.print("! ");
   }
-  if ( gyro == 3 && accel == 3 && mag == 3)
+  if ( accel == 3 )
   {
     digitalWrite(LED_IMU_STATE, HIGH);
   }
@@ -274,7 +274,12 @@ void Orientation::addZOrientationOffset(double change)
 }
 double Orientation::getXOrientationDelta()
 {
-	return getInitOrientation().orientation.x - (getCurrentOrientation().orientation.x - x_orientation_offset);
+	double delta = getInitOrientation().orientation.x - (getCurrentOrientation().orientation.x - x_orientation_offset);
+    if ( delta > 270 )
+      delta = delta - 360;
+    else if ( delta < -270 )
+      delta = delta + 360;
+	return delta;
 }
 double Orientation::getYOrientationDelta()
 {
@@ -283,4 +288,17 @@ double Orientation::getYOrientationDelta()
 double Orientation::getZOrientationDelta()
 {
 	return getInitOrientation().orientation.z - (getCurrentOrientation().orientation.z - z_orientation_offset);
+}
+void Orientation::printOrientationDelta()
+{
+	sensors_event_t cur_event = getCurrentOrientation();
+	Serial.print("XangleDelta: ");
+	Serial.print(getInitOrientation().orientation.x - (cur_event.orientation.x - x_orientation_offset));
+	Serial.print("    ");	  
+	Serial.print("ZangleDelta: ");
+	Serial.print(getInitOrientation().orientation.z - (cur_event.orientation.z - z_orientation_offset));
+	Serial.print("    ");	  
+	Serial.print("YangleDelta: ");
+	Serial.print(getInitOrientation().orientation.y - (cur_event.orientation.y - y_orientation_offset));
+	Serial.println("");	  
 }
